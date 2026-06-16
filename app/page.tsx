@@ -30,12 +30,17 @@ type IntakeDetails = {
 };
 
 function cleanTranscript(text: string) {
-  return text.replace(/\(\d+:\d+\)/g, "").replace(/\s+/g, " ").trim();
+  return text
+    .replace(/\(\d+:\d+\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function extractSplitPhone(text: string) {
   const cleaned = cleanTranscript(text);
-  const phoneArea = cleaned.match(/phone number.+?(\d{3}).+?(\d{3}).+?(\d{4})/i);
+  const phoneArea = cleaned.match(
+    /phone number.+?(\d{3}).+?(\d{3}).+?(\d{4})/i,
+  );
 
   if (phoneArea) {
     return `${phoneArea[1]}-${phoneArea[2]}-${phoneArea[3]}`;
@@ -47,70 +52,149 @@ function extractSplitPhone(text: string) {
 function analyzeTranscript(text: string): IntakeDetails {
   const cleaned = cleanTranscript(text);
   const lower = cleaned.toLowerCase();
-
+  const customerName =
+    cleaned.match(
+      /(?:my name is|this is|name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+    )?.[1] || "";
   const phone = extractSplitPhone(cleaned);
 
   const email =
     cleaned.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
 
-  const moveDate =
-    cleaned.match(/(?:this weekend,\s*)?(saturday|sunday|monday|tuesday|wednesday|thursday|friday)/i)?.[0] ||
-    cleaned.match(/\b\d{1,2}\/\d{1,2}\/?\d{0,4}\b/)?.[0] ||
-    "";
+ const moveDate =
+  cleaned.match(
+    /\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?\b/i,
+  )?.[0] ||
+  cleaned.match(
+    /(?:this weekend,\s*)?(saturday|sunday|monday|tuesday|wednesday|thursday|friday)/i,
+  )?.[0] ||
+  cleaned.match(/\b\d{1,2}\/\d{1,2}\/?\d{0,4}\b/)?.[0] ||
+  "";
 
-  const cityMatch = cleaned.match(/(?:move from|moving from|from)\s+([A-Za-z\s]+?)\s+to\s+([A-Za-z\s]+?)(?:\s+and|\s+which|\.|,)/i);
+  const cityMatch = cleaned.match(
+    /(?:move from|moving from|from)\s+([A-Za-z\s]+?)\s+to\s+([A-Za-z\s]+?)(?:\s+and|\s+which|\.|,)/i,
+  );
 
   const fromCity = cityMatch?.[1]?.trim() || "";
   const toCity = cityMatch?.[2]?.trim() || "";
 
-  const pickupAddress =
-    cleaned.match(/pickup address.*?(\d{2,6}.+?(?:court|ct|street|st|road|rd|drive|dr|avenue|ave|lane|ln).+?(?:\d{5})?)/i)?.[1]?.trim() ||
-    "";
+  const addressPair = cleaned.match(
+  /(?:moving from|move from|from)\s+(.+?)\s+to\s+(.+?)(?:\.|\n|$)/i,
+);
 
-  const dropoffAddress =
-    cleaned.match(/drop off location address.*?(\d{2,6}.+?(?:run|court|ct|street|st|road|rd|drive|dr|avenue|ave|lane|ln))/i)?.[1]?.trim() ||
-    "";
+const pickupAddress =
+  addressPair?.[1]?.trim() ||
+  cleaned
+    .match(
+      /pickup address.*?(\d{2,6}.+?(?:court|ct|street|st|road|rd|drive|dr|avenue|ave|lane|ln).+?(?:\d{5})?)/i,
+    )?.[1]
+    ?.trim() ||
+  "";
+
+const dropoffAddress =
+  addressPair?.[2]?.trim() ||
+  cleaned
+    .match(
+      /drop off location address.*?(\d{2,6}.+?(?:run|court|ct|street|st|road|rd|drive|dr|avenue|ave|lane|ln).+?(?:\d{5})?)/i,
+    )?.[1]
+    ?.trim() ||
+  "";
 
   const homeSize =
-    cleaned.match(/(?:three-bedroom|3-bedroom|two-bedroom|2-bedroom|one-bedroom|1-bedroom|four-bedroom|4-bedroom)/i)?.[0] ||
-    "";
+    cleaned.match(
+      /(?:three-bedroom|3-bedroom|two-bedroom|2-bedroom|one-bedroom|1-bedroom|four-bedroom|4-bedroom)/i,
+    )?.[0] || "";
 
-  const pickupProperty = lower.includes("townhome")
-    ? "Townhome"
-    : lower.includes("apartment")
+ const pickupProperty = lower.includes("pickup location is")
+  ? cleaned.match(/pickup location is .*?(apartment|ranch-style home|ranch home|house|townhome|condo|storage|office)/i)?.[1] || ""
+  : lower.includes("apartment")
     ? "Apartment"
-    : lower.includes("house")
-    ? "House"
-    : "";
+    : lower.includes("ranch")
+      ? "Ranch Home"
+      : lower.includes("townhome")
+        ? "Townhome"
+        : lower.includes("condo")
+          ? "Condo"
+          : lower.includes("storage")
+            ? "Storage"
+            : lower.includes("office")
+              ? "Office"
+              : lower.includes("house")
+                ? "House"
+                : "";
 
-  const dropoffProperty = lower.includes("also a townhome")
-    ? "Townhome"
-    : lower.includes("apartment")
-    ? "Apartment"
-    : pickupProperty;
+let dropoffProperty =
+  cleaned.match(/destination is (?:a |an )?(ranch-style home|ranch home|apartment|house|townhome|condo|storage|office)/i)?.[1] ||
+  cleaned.match(/dropoff.*?(ranch-style home|ranch home|apartment|house|townhome|condo|storage|office)/i)?.[1] ||
+  "";
 
-  const stairs = lower.includes("one set of stairs")
-    ? "Pickup: one set of stairs"
-    : lower.includes("two floors")
-    ? "Pickup: two floors"
-    : lower.includes("three floors")
-    ? "Dropoff: three floors"
-    : lower.includes("stairs")
-    ? "Stairs mentioned, review transcript"
-    : "";
+if (!dropoffProperty && lower.includes("ranch home")) {
+  dropoffProperty = "Ranch Home";
+}
 
-  const foundItems: string[] = [];
+ const accessDetails: string[] = [];
 
-  if (lower.includes("bed")) foundItems.push("Beds");
-  if (lower.includes("couch")) foundItems.push("Couch");
-  if (lower.includes("dining table")) foundItems.push("Dining table and chairs");
-  if (lower.includes("fridge") || lower.includes("refrigerator")) foundItems.push("Fridge");
-  if (lower.includes("tv")) foundItems.push("TV");
-  if (lower.includes("furniture")) foundItems.push("Furniture");
+if (lower.includes("no stairs")) accessDetails.push("No stairs reported");
+if (lower.includes("second-floor") || lower.includes("second floor")) {
+  accessDetails.push("Second-floor access");
+}
+if (lower.includes("third-floor") || lower.includes("third floor")) {
+  accessDetails.push("Third-floor access");
+}
+if (lower.includes("one flight")) accessDetails.push("One flight of stairs");
+if (lower.includes("two flights")) accessDetails.push("Two flights of stairs");
+if (lower.includes("no elevator")) {
+  accessDetails.push("No elevator");
+} else if (lower.includes("elevator")) {
+  accessDetails.push("Elevator available");
+}
+if (lower.includes("long walk")) accessDetails.push("Long walk noted");
 
-  const leadSource = lower.includes("chat gvd") || lower.includes("chatgpt") || lower.includes("chat gpt")
-    ? "ChatGPT recommendation"
-    : "";
+const stairs = accessDetails.join(". ");
+
+  const itemKeywords = [
+    "bed",
+    "mattress",
+    "dresser",
+    "nightstand",
+    "couch",
+    "sofa",
+    "sectional",
+    "recliner",
+    "dining table",
+    "chairs",
+    "desk",
+    "tv",
+    "tv stand",
+    "deep freezer",
+    "freezer",
+    "refrigerator",
+    "fridge",
+    "washer",
+    "dryer",
+    "safe",
+    "piano",
+    "fish tank",
+    "exercise equipment",
+    "treadmill",
+    "grill",
+    "smoker",
+    "tool chest",
+    "boxes",
+  ];
+
+  const foundItems = itemKeywords.filter((item) => lower.includes(item));
+
+ const leadSource =
+  lower.includes("google reviews")
+    ? "Google Reviews"
+    : lower.includes("google")
+      ? "Google"
+      : lower.includes("truck")
+        ? "Company Truck"
+        : lower.includes("chatgpt") || lower.includes("chat gpt")
+          ? "ChatGPT"
+          : "";
 
   const moveType = fromCity && toCity ? "Local Move" : "";
 
@@ -122,9 +206,13 @@ function analyzeTranscript(text: string): IntakeDetails {
   if (!dropoffAddress) missing.push("Exact dropoff address");
   if (!leadSource) missing.push("Lead source");
   if (!homeSize) missing.push("Bedroom count / home size");
+  if (!stairs) missing.push("Stairs / elevator / access details");
+if (!pickupProperty) missing.push("Pickup property type");
+if (!dropoffProperty) missing.push("Dropoff property type");
+
 
   return {
-    customerName: "",
+    customerName,
     phone,
     email,
     moveDate,
@@ -143,8 +231,6 @@ function analyzeTranscript(text: string): IntakeDetails {
   };
 }
 
-
-
 export default function Home() {
   const [transcript, setTranscript] = useState("");
   const [notes, setNotes] = useState("");
@@ -152,34 +238,18 @@ export default function Home() {
   const [outcome, setOutcome] = useState("Left Voicemail");
   const [customerName, setCustomerName] = useState("");
   const [callNotes, setCallNotes] = useState("");
+  const detectedDetails = analyzeTranscript(transcript);
 
-  const [callHistory, setCallHistory] = useState<CallHistoryItem[]>(() => {
-    if (typeof window === "undefined") return [];
+const [callHistory, setCallHistory] = useState<CallHistoryItem[]>([]);
 
-    const savedCalls = localStorage.getItem("asap-call-history");
 
-    if (!savedCalls) return [];
 
-    try {
-      return JSON.parse(savedCalls);
-    } catch {
-      return [];
-    }
-  });
-
-  const missingInfo = [
-    "Unit Number",
-    "Stairs",
-    "Elevator",
-    "Long Walk",
-    "Lead Source",
-    "Exact Pickup Address",
-    "Exact Drop-off Address",
-  ];
-
-  useEffect(() => {
-    localStorage.setItem("asap-call-history", JSON.stringify(callHistory));
-  }, [callHistory]);
+useEffect(() => {
+  localStorage.setItem(
+    "asap-call-history",
+    JSON.stringify(callHistory)
+  );
+}, [callHistory]);
 
   function generateNotes() {
     const details = analyzeTranscript(transcript);
@@ -212,8 +282,23 @@ ${details.pickupAddress || "Not provided"}
 DROPOFF ADDRESS / LOCATION:
 ${details.dropoffAddress || "Not provided"}
 
+PICKUP PROPERTY:
+${details.pickupProperty || "Not provided"}
+
+DROPOFF PROPERTY:
+${details.dropoffProperty || "Not provided"}
+
+STAIRS / ACCESS:
+${details.stairs || "Not provided"}
+
+LEAD SOURCE:
+${details.leadSource || "Not provided"}
+
+MISSING INFORMATION:
+${details.missing.length > 0 ? details.missing.join(", ") : "No major missing information detected"}
+
 ITEMS TO MOVE:
-Not provided
+${details.items || "Not provided"}
 
 NOTES:
 ${callNotes || "Review transcript for extra details."}
@@ -299,20 +384,20 @@ Confirm new availability
     }
   }
 
-function saveCall() {
-  const details = analyzeTranscript(transcript);
+  function saveCall() {
+    const details = analyzeTranscript(transcript);
 
-  setCallHistory((prev) => [
-    {
-      customer: customerName || details.customerName || "Unknown Customer",
-      notes: notes || callNotes || transcript,
-      date: new Date().toLocaleTimeString(),
-      type: callType,
-      outcome,
-    },
-    ...prev,
-  ]);
-}
+    setCallHistory((prev) => [
+      {
+        customer: customerName || details.customerName || "Unknown Customer",
+        notes: notes || callNotes || transcript,
+        date: new Date().toLocaleTimeString(),
+        type: callType,
+        outcome,
+      },
+      ...prev,
+    ]);
+  }
 
   function copyNotes() {
     navigator.clipboard.writeText(notes);
@@ -358,6 +443,8 @@ function saveCall() {
                 rows={3}
               />
             </div>
+          
+            
 
             <div className="mb-4 flex flex-wrap gap-2">
               {["New Lead", "Complaint", "Status Check", "Reschedule"].map(
@@ -371,7 +458,7 @@ function saveCall() {
                   >
                     {type}
                   </button>
-                )
+                ),
               )}
             </div>
 
@@ -402,7 +489,20 @@ function saveCall() {
               placeholder="Paste transcript here..."
               className="h-[420px] w-full rounded-lg border border-slate-700 bg-slate-950 p-4"
             />
+  <div className="mt-4 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
+              <h3 className="font-semibold text-blue-300">🔎 Detected Information</h3>
 
+              <div className="mt-3 grid gap-2 text-sm text-slate-200">
+                <p><strong>Customer:</strong> {customerName || detectedDetails.customerName || "Not detected"}</p>
+                <p><strong>Phone:</strong> {detectedDetails.phone || "Not detected"}</p>
+                <p><strong>Email:</strong> {detectedDetails.email || "Not detected"}</p>
+                <p><strong>Move Date:</strong> {detectedDetails.moveDate || "Not detected"}</p>
+                <p><strong>Move Type:</strong> {detectedDetails.moveType || "Not detected"}</p>
+                <p><strong>Home Size:</strong> {detectedDetails.homeSize || "Not detected"}</p>
+                <p><strong>Items:</strong> {detectedDetails.items || "Not detected"}</p>
+                <p><strong>Lead Source:</strong> {detectedDetails.leadSource || "Not detected"}</p>
+              </div>
+              </div>
             <div className="mt-4 flex gap-3">
               <button
                 onClick={generateNotes}
@@ -434,7 +534,8 @@ function saveCall() {
             </div>
 
             <pre className="h-[420px] overflow-auto whitespace-pre-wrap rounded-lg border border-slate-700 bg-slate-950 p-4">
-              {notes || "Paste a customer conversation and click Generate Notes."}
+              {notes ||
+                "Paste a customer conversation and click Generate Notes."}
             </pre>
 
             <div className="mt-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
@@ -443,13 +544,17 @@ function saveCall() {
               </h3>
 
               <div className="mt-3 grid gap-2 text-sm text-slate-200">
-                {missingInfo.map((item) => (
+              {detectedDetails.missing.length === 0 ? (
+                <p>✅ No major missing information detected.</p>
+              ) : (
+                detectedDetails.missing.map((item) => (
                   <label key={item} className="flex items-center gap-2">
                     <input type="checkbox" className="h-4 w-4" />
                     {item}
                   </label>
-                ))}
-              </div>
+                ))
+              )}
+            </div>
             </div>
           </div>
         </div>

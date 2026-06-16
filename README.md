@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ASAP Call Assistant
 
-## Getting Started
+ASAP Call Assistant is a Next.js + TypeScript application designed to help moving company staff quickly convert customer call transcripts into structured Supermove-ready notes.
 
-First, run the development server:
+## Current Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Step 1: Transcript Intake Assistant ✅
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Paste a customer call transcript and automatically extract:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Customer Name
+- Phone Number
+- Email Address
+- Move Date
+- Move Type
+- Pickup Location
+- Dropoff Location
+- Property Types
+- Stairs / Elevator Information
+- Inventory Items
+- Lead Source
+- Missing Information Checklist
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Generated Output
 
-## Learn More
+Creates structured notes that can be copied directly into Supermove:
 
-To learn more about Next.js, take a look at the following resources:
+- Customer Information
+- Move Details
+- Access Information
+- Inventory Summary
+- Missing Information
+- Raw Transcript Reference
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Call Tracking
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Save calls locally
+- View call history
+- Copy generated notes
+- Track outcomes
+- Support multiple call types:
+  - New Lead
+  - Complaint
+  - Status Check
+  - Reschedule
 
-## Deploy on Vercel
+## Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Next.js 16
+- React
+- TypeScript
+- Tailwind CSS
+- LocalStorage
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project Status
+
+### Completed
+
+✅ Step 1: Transcript Intake Assistant
+
+### Planned
+
+🔲 Step 2: Supermove Intake Assistant
+
+- Generate CRM-ready intake summaries
+- Crew recommendations
+- Truck recommendations
+- Better property detection
+
+🔲 Step 3: Follow-Up Assistant
+
+- No response follow-ups
+- Voicemail templates
+- Estimate follow-ups
+
+🔲 Step 4: Estimate Recommendation Engine
+
+- Suggest crew sizes
+- Suggest truck sizes
+- Estimate labor hours
+
+🔲 Step 5: Callback Dashboard
+
+- Callback queue
+- Follow-up tracking
+- Customer status tracking
+
+## Example Workflow
+
+1. Receive customer call
+2. Paste transcript
+3. Review extracted information
+4. Generate notes
+5. Copy into Supermove
+6. Save call history
+
+## Author
+
+Curt Vance
+
+Frontend Developer
+React • Next.js • TypeScript
